@@ -148,7 +148,8 @@ func main() {
 			}
 		}
 
-		fmt.Printf("attempting to move %s to %s\n", filepath, dest)
+		// fmt.Printf("attempting to move %s to %s\n", filepath, dest)
+
 		// if it ends with a / strip it
 		if filepath[len(filepath)-1:] == "/" {
 			filepath = strings.TrimRight(filepath, "/")
