@@ -7,8 +7,10 @@ import (
 )
 
 // Checklist
+//     rm [-f | -i] [-dIRrvWx] file ...
+//
 // [X] -d      Attempt to remove directories as well as other types of files.
-// [ ] -f      Attempt to remove the files without prompting for confirmation, regardless of the file's permissions.  If the file does not exist, do not display a diagnostic message or modify the exit status
+// [X] -f      Attempt to remove the files without prompting for confirmation, regardless of the file's permissions.  If the file does not exist, do not display a diagnostic message or modify the exit status
 //             to reflect an error.  The -f option overrides any previous -i options.
 // [X] -i      Request confirmation before attempting to remove each file, regardless of the file's permissions, or whether or not the standard input device is a terminal.  The -i option overrides any
 //             previous -f options.
@@ -38,7 +40,7 @@ var VALIDARGS = []string{
 
 func usage() {
 	fmt.Println("Usage:")
-	fmt.Println("    srm [-f | -i] [-d] <filepath> <...>")
+	fmt.Println("    srm [-f | -i] [-dRr] <filepath> <...>")
 	fmt.Println("Note:")
 	fmt.Println("    Intended to replace `rm` via a shell alias")
 }
@@ -60,6 +62,7 @@ func parseArgs() ([]string, []string) {
 	for _, arg := range args {
 		if arg == "--" {
 			seenDoubleDash = true
+			continue
 		}
 
 		// flags/params
