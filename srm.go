@@ -14,14 +14,14 @@ import (
 //             to reflect an error.  The -f option overrides any previous -i options.
 // [X] -i      Request confirmation before attempting to remove each file, regardless of the file's permissions, or whether or not the standard input device is a terminal.  The -i option overrides any
 //             previous -f options.
-// [ ] -I      Request confirmation once if more than three files are being removed or if a directory is being recursively removed.  This is a far less intrusive option than -i yet provides almost the same
+// [X] -I      Request confirmation once if more than three files are being removed or if a directory is being recursively removed.  This is a far less intrusive option than -i yet provides almost the same
 //             level of protection against mistakes.
 // [X] -P      This flag has no effect.  It is kept only for backwards compatibility with 4.4BSD-Lite2.
 // [X] -R      Attempt to remove the file hierarchy rooted in each file argument.  The -R option implies the -d option.  If the -i option is specified, the user is prompted for confirmation before each
 //             directory's contents are processed (as well as before the attempt is made to remove the directory).  If the user does not respond affirmatively, the file hierarchy rooted in that directory is
 //             skipped.
 // [X] -r      Equivalent to -R.
-// [ ] -v      Be verbose when deleting files, showing them as they are removed.
+// [X] -v      Be verbose when deleting files, showing them as they are removed.
 // [ ] -W      Attempt to undelete the named files.  Currently, this option can only be used to recover files covered by whiteouts in a union file system (see undelete(2)).
 // [ ] -x      When removing a hierarchy, do not cross mount points.
 // [ ] --      Makes all args after the double dash filenames (would be required to delete a file literally named "-i" for example)
@@ -37,11 +37,12 @@ var VALIDARGS = []string{
     "-r",
     "-R",
     "-d",
+    "-v",
 }
 
 func usage() {
     fmt.Println("Usage:")
-    fmt.Println("    srm [-f | -i] [-dIRr] <filepath> <...>")
+    fmt.Println("    srm [-f | -i] [-dIRrv] <filepath> <...>")
     fmt.Println("Note:")
     fmt.Println("    Intended to replace `rm` via a shell alias")
 }
@@ -137,6 +138,9 @@ func main() {
     // allow directories to be deleted
     directoryFlag := In("-d", flags)
 
+    // verbose delete
+    verboseFlag := In("-v", flags)
+
     //fmt.Println("Flags: ", flags)
     //fmt.Println("Files: ", files)
 
@@ -197,6 +201,10 @@ func main() {
         if fileIsReadOnly && !forceFlag {
             fmt.Println("File is read-only")
             os.Exit(1)
+        }
+
+        if verboseFlag {
+            fmt.Println(filename)
         }
 
         os.Rename(filepath, dest)
