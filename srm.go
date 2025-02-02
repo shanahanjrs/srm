@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"strings"
+    "fmt"
+    "os"
+    "strings"
 )
 
 // Checklist
@@ -28,147 +28,177 @@ import (
 // [ ] rename file if it already exists in destination
 
 var VALIDARGS = []string{
-	"-h",
-	"--help",
-	"-P",
-	"-f",
-	"-i",
-	"-r",
-	"-R",
-	"-d",
+    "-h",
+    "--help",
+    "-P",
+    "-f",
+    "-i",
+    "-I",
+    "-r",
+    "-R",
+    "-d",
 }
 
 func usage() {
-	fmt.Println("Usage:")
-	fmt.Println("    srm [-f | -i] [-dRr] <filepath> <...>")
-	fmt.Println("Note:")
-	fmt.Println("    Intended to replace `rm` via a shell alias")
+    fmt.Println("Usage:")
+    fmt.Println("    srm [-f | -i] [-dIRr] <filepath> <...>")
+    fmt.Println("Note:")
+    fmt.Println("    Intended to replace `rm` via a shell alias")
+}
+
+// getUserConfirmation
+// will print your msg (string) and then return true or false depending on users response
+func getUserConfirmation(msg string) bool {
+    var interactiveResponse string
+    fmt.Print(msg)
+    fmt.Scanln(&interactiveResponse)
+    interactiveResponse = strings.ToLower(interactiveResponse)
+    if In(interactiveResponse, []string{"y", "yes", "yea", "yeah", "da", "si", "letsgo"}) {
+        return true
+    }
+
+    return false
 }
 
 func parseArgs() ([]string, []string) {
-	// TODO support --
-	// srm -- -f would remove a file named -f instead of being parsed as the "force flag"
-	args := os.Args[1:]
+    // TODO support --
+    // srm -- -f would remove a file named -f instead of being parsed as the "force flag"
+    args := os.Args[1:]
 
-	if len(args) < 1 {
-		usage()
-		os.Exit(1)
-	}
+    if len(args) < 1 {
+        usage()
+        os.Exit(1)
+    }
 
-	flags := []string{}
-	files := []string{}
-	seenDoubleDash := false
+    flags := []string{}
+    files := []string{}
+    seenDoubleDash := false
 
-	for _, arg := range args {
-		if arg == "--" {
-			seenDoubleDash = true
-			continue
-		}
+    for _, arg := range args {
+        if arg == "--" {
+            seenDoubleDash = true
+            continue
+        }
 
-		// flags/params
-		if In(arg, VALIDARGS) && !seenDoubleDash {
-			flags = append(flags, arg)
-			continue
-		}
+        // flags/params
+        if In(arg, VALIDARGS) && !seenDoubleDash {
+            flags = append(flags, arg)
+            continue
+        }
 
-		// files
-		files = append(files, arg)
-	}
+        // files
+        files = append(files, arg)
+    }
 
-	return flags, files
+    return flags, files
 }
 
 // Get target dir for safely removed files
 func getTargetRmDir() string {
-	// First check if ~/.Trash exists (macOS)
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Println("Could not get users home dir")
-		os.Exit(1)
-	}
+    // First check if ~/.Trash exists (macOS)
+    homeDir, err := os.UserHomeDir()
+    if err != nil {
+        fmt.Println("Could not get users home dir")
+        os.Exit(1)
+    }
 
-	path := homeDir + "/.Trash"
-	if _, err := os.Stat(path); err == nil {
-		// ~/.Trash
-		return path
-	}
+    path := homeDir + "/.Trash"
+    if _, err := os.Stat(path); err == nil {
+        // ~/.Trash
+        return path
+    }
 
-	// Otherwise just use /tmp
-	return "/tmp"
+    // Otherwise just use /tmp
+    return "/tmp"
 }
 
 func main() {
-	targetDir := getTargetRmDir()
-	flags, files := parseArgs()
+    targetDir := getTargetRmDir()
+    flags, files := parseArgs()
+    filesCount := len(files)
 
-	// help
-	helpFlag := In("-h", flags) || In("--help", flags)
-	if helpFlag {
-		usage()
-		os.Exit(0)
-	}
+    // help
+    helpFlag := In("-h", flags) || In("--help", flags)
+    if helpFlag {
+        usage()
+        os.Exit(0)
+    }
 
-	// Force
-	forceFlag := In("-f", flags)
+    // Force
+    forceFlag := In("-f", flags)
 
-	// interactive
-	interactiveFlag := In("-i", flags)
+    // interactive
+    interactiveFlag := In("-i", flags)
+    nonintrusiveInteractiveFlag := In("-I", flags)
 
-	// recursive
-	recursiveFlag := In("-r", flags) || In("-R", flags)
+    // recursive
+    recursiveFlag := In("-r", flags) || In("-R", flags)
 
-	// allow directories to be deleted
-	directoryFlag := In("-d", flags)
+    // allow directories to be deleted
+    directoryFlag := In("-d", flags)
 
-	//fmt.Println("Flags: ", flags)
-	//fmt.Println("Files: ", files)
+    //fmt.Println("Flags: ", flags)
+    //fmt.Println("Files: ", files)
 
-	for _, filepath := range files {
-		// directory and -r check
-		if isDir, err := IsDir(filepath); isDir {
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			if !recursiveFlag && !directoryFlag {
-				fmt.Printf("srm: %s: is a directory\n", filepath)
-				os.Exit(1)
-			}
-		}
+    // handle -I >3 files case
+    if nonintrusiveInteractiveFlag && filesCount > 3 {
+        removeMultipleMsg := fmt.Sprintf("remove %d files?", filesCount)
+        if !getUserConfirmation(removeMultipleMsg) {
+            os.Exit(0)
+        }
+    }
 
-		splitFilePath := strings.Split(filepath, "/")
-		filename := splitFilePath[len(splitFilePath)-1]
-		dest := targetDir + "/" + filename
+    for _, filepath := range files {
+        // directory and -r check
+        isDir, err := IsDir(filepath)
+        if err != nil {
+            fmt.Println(err)
+            os.Exit(1)
+        }
 
-		// -i
-		if interactiveFlag {
-			var interactiveResponse string
-			fmt.Printf("remove %s?\n", filepath)
-			fmt.Scanln(&interactiveResponse)
-			interactiveResponse = strings.ToLower(interactiveResponse)
-			if !In(interactiveResponse, []string{"y", "yes", "yea", "yeah", "da", "si", "letsgo"}) {
-				continue
-			}
-		}
+        if (isDir && !recursiveFlag && !directoryFlag) {
+            // if its a directory and they haven't specified -r || -R || -d then fail
+            fmt.Printf("srm: %s: is a directory\n", filepath)
+            os.Exit(1)
+        }
 
-		// fmt.Printf("attempting to move %s to %s\n", filepath, dest)
+        if isDir && nonintrusiveInteractiveFlag && recursiveFlag {
+            recursiveDelMsg := fmt.Sprintf("recursively remove %s?", filepath)
+            if !getUserConfirmation(recursiveDelMsg) {
+                continue
+            }
+        }
 
-		// if it ends with a / strip it
-		if filepath[len(filepath)-1:] == "/" {
-			filepath = strings.TrimRight(filepath, "/")
-		}
+        splitFilePath := strings.Split(filepath, "/")
+        filename := splitFilePath[len(splitFilePath)-1]
+        dest := targetDir + "/" + filename
 
-		// check file isn't RO
-		fileIsReadOnly, err := IsReadOnly(filepath)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		if fileIsReadOnly && !forceFlag {
-			fmt.Println("File is read-only")
-			os.Exit(1)
-		}
+        // -i
+        if interactiveFlag {
+            deleteMsg := fmt.Sprintf("remove %s?", filepath)
+            if !getUserConfirmation(deleteMsg) {
+                continue
+            }
+        }
 
-		os.Rename(filepath, dest)
-	}
+        // fmt.Printf("attempting to move %s to %s\n", filepath, dest)
+
+        // if it ends with a / strip it
+        if filepath[len(filepath)-1:] == "/" {
+            filepath = strings.TrimRight(filepath, "/")
+        }
+
+        // check file isn't RO
+        fileIsReadOnly, err := IsReadOnly(filepath)
+        if err != nil {
+            fmt.Println(err)
+            os.Exit(1)
+        }
+        if fileIsReadOnly && !forceFlag {
+            fmt.Println("File is read-only")
+            os.Exit(1)
+        }
+
+        os.Rename(filepath, dest)
+    }
 }
